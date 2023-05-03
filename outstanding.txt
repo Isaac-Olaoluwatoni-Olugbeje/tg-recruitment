@@ -1,0 +1,34 @@
+Redirect operators who have not completed registration to registration page.
+Change text type for operator registration from carousel to underscore notation.
+
+Sample general login route// Login route
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    // Check if user exists and password is correct
+    const user = await User.getUserByEmail(email);
+    if (!user) {
+      return res.status(401).send('Invalid email or password');
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).send('Invalid username or password');
+    }
+
+    // User authenticated, set their authorization level in the session
+    req.session.authorizationLevel = user.authorization_level;
+
+    // If user is an operator, redirect to operator registration form
+    if (user.authorization_level === 'operator') {
+      return res.redirect('/operator/register');
+    }
+
+    // Generate and send new token
+    const token = jwt.sign({ userId: user.user_id, authorizationLevel: user.authorization_level }, 'root', { expiresIn: '2h' });
+    res.json({ user, token });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Internal server error');
+  }
+});
